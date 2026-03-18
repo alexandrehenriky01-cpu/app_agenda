@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "228355810133",
+    "project_id": "studio-pro-825c5",
+    "storage_bucket": "studio-pro-825c5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:228355810133:android:e96232efcc105e850a85dc",
+        "android_client_info": {
+          "package_name": "com.example.beleza_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGfamFE6TNpBzpe_vILY6CUlgASDiyF6w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

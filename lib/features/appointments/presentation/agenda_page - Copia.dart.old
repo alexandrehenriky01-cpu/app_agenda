@@ -1,0 +1,143 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:syncfusion_flutter_calendar/calendar.dart';
+import '../../../core/whatsapp/whatsapp_messages.dart';
+import '../../../core/whatsapp/whatsapp_service.dart';
+
+import '../data/appointment_providers.dart';
+import '../domain/appointment.dart';
+import 'appointment_detail_page.dart';
+import 'appointment_form_page.dart';
+import 'calendar_data_source.dart';
+
+class AgendaPage extends ConsumerStatefulWidget {
+  const AgendaPage({super.key});
+
+  @override
+  ConsumerState<AgendaPage> createState() => _AgendaPageState();
+}
+
+class _AgendaPageState extends ConsumerState<AgendaPage> {
+  final CalendarController _controller = CalendarController();
+  DateTime _visibleMonth = DateTime.now();
+
+  DateRange _monthRange(DateTime date) {
+    final first = DateTime(date.year, date.month, 1);
+    final nextMonth = DateTime(date.year, date.month + 1, 1);
+    return DateRange(first, nextMonth);
+  }
+
+  Color _statusColor(AppointmentStatus s) {
+    switch (s) {
+      case AppointmentStatus.confirmed:
+        return Colors.green;
+      case AppointmentStatus.done:
+        return Colors.blueGrey;
+      case AppointmentStatus.canceled:
+        return Colors.red;
+      case AppointmentStatus.pending:
+        return Colors.orange;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final range = _monthRange(_visibleMonth);
+    final async = ref.watch(appointmentsRangeProvider(range));
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Agenda'),
+        actions: [
+          IconButton(
+            tooltip: 'Mês',
+            onPressed: () => setState(() => _controller.view = CalendarView.month),
+            icon: const Icon(Icons.calendar_month),
+          ),
+          IconButton(
+            tooltip: 'Semana',
+            onPressed: () => setState(() => _controller.view = CalendarView.week),
+            icon: const Icon(Icons.view_week),
+          ),
+          IconButton(
+            tooltip: 'Dia',
+            onPressed: () => setState(() => _controller.view = CalendarView.day),
+            icon: const Icon(Icons.view_day),
+          ),
+        ],
+      ),
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Erro: $e')),
+        data: (items) {
+          final events = items.map((a) {
+            final title = a.services.map((s) => s.nameSnapshot).join(' + ');
+
+            return CalendarEvent(
+              id: a.id,
+              title: title.isEmpty ? 'Agendamento' : title,
+              from: a.startAt,
+              to: a.endAt,
+              color: _statusColor(a.status),
+            );
+          }).toList();
+
+          final dataSource = AppCalendarDataSource(events);
+
+          return SfCalendar(
+            controller: _controller,
+            view: CalendarView.month,
+            dataSource: dataSource,
+            timeSlotViewSettings: const TimeSlotViewSettings(
+              startHour: 7,
+              endHour: 21,
+              timeIntervalHeight: 60,
+              timeFormat: 'HH:mm',
+            ),
+            monthViewSettings: const MonthViewSettings(
+              showAgenda: true,
+              agendaItemHeight: 56,
+            ),
+            onViewChanged: (details) {
+              final visibleDates = details.visibleDates;
+              if (visibleDates.isEmpty) return;
+              final mid = visibleDates[visibleDates.length ~/ 2];
+              setState(() => _visibleMonth = DateTime(mid.year, mid.month, 1));
+            },
+            onTap: (details) {
+              // Tocou em um evento -> abrir detalhe
+              if (details.appointments != null && details.appointments!.isNotEmpty) {
+                final event = details.appointments!.first as CalendarEvent;
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AppointmentDetailPage(appointmentId: event.id),
+                  ),
+                );
+                return;
+              }
+
+              // Tocou em horário vazio -> criar novo agendamento
+              if (details.date != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AppointmentFormPage()),
+                );
+              }
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AppointmentFormPage()),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}

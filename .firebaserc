@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "y": "studio-pro-825c5",
+    "default": "studio-pro-825c5",
+    "prod": "studio-pro-825c5"
+  },
+  "targets": {},
+  "etags": {}
+}
