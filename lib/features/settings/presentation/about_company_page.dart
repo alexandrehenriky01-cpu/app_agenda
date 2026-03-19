@@ -37,7 +37,13 @@ class AboutCompanyPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sobre a empresa'),
+        title: const Text(
+          'Sobre a empresa',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 17,
+          ),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -79,7 +85,7 @@ class AboutCompanyPage extends StatelessWidget {
             ),
             SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -105,11 +111,11 @@ class AboutCompanyPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(22),
                             child: Image.asset(
                               'assets/images/logo_aurya_beauty.png',
-                              height: 220,
+                              height: 200,
                               fit: BoxFit.contain,
                             ),
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 16),
                           ShaderMask(
                             shaderCallback: (bounds) {
                               return const LinearGradient(
@@ -138,7 +144,7 @@ class AboutCompanyPage extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     _InfoCard(
                       title: 'Sobre a empresa',
                       icon: Icons.business_rounded,

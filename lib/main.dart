@@ -9,25 +9,42 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 
 import 'app_router.dart';
-import 'core/database/database.dart';
+// import 'core/database/database.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  await AppDatabase.database;
+    // await AppDatabase.database;
 
-  await initializeDateFormatting('pt_BR', null);
-  Intl.defaultLocale = 'pt_BR';
+    await initializeDateFormatting('pt_BR', null);
+    Intl.defaultLocale = 'pt_BR';
 
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+    runApp(
+      const ProviderScope(
+        child: MyApp(),
+      ),
+    );
+  } catch (e, s) {
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Erro ao iniciar o app:\n\n$e\n\n$s',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class MyApp extends ConsumerWidget {

@@ -14,15 +14,13 @@ class FinancePage extends ConsumerStatefulWidget {
 
 class _FinancePageState extends ConsumerState<FinancePage> {
   DateTime _visibleMonth = DateTime.now();
-
-  /// null = todos
   PaymentMethod? _methodFilter;
 
-  // 🎨 Paleta “Studio”
   static const _pink = Color(0xFFE91E63);
   static const _rose = Color(0xFFF8BBD0);
   static const _nude = Color(0xFFFFF3F6);
   static const _ink = Color(0xFF1F1F1F);
+  static const _white = Colors.white;
 
   DateRange _monthRange(DateTime date) {
     final first = DateTime(date.year, date.month, 1);
@@ -57,12 +55,14 @@ class _FinancePageState extends ConsumerState<FinancePage> {
       case PaymentMethod.cartao:
         return Icons.credit_card;
       default:
-        return Icons.filter_alt;
+        return Icons.filter_alt_outlined;
     }
   }
 
   double _sumByMethod(List<FinanceTransaction> list, PaymentMethod method) {
-    return list.where((t) => t.method == method).fold<double>(0, (acc, t) => acc + t.amount);
+    return list
+        .where((t) => t.method == method)
+        .fold<double>(0, (acc, t) => acc + t.amount);
   }
 
   void _prevMonth() {
@@ -77,19 +77,24 @@ class _FinancePageState extends ConsumerState<FinancePage> {
     });
   }
 
-  // =========================
-  // DASHBOARD HELPERS
-  // =========================
+  List<double> _dailyTotals(
+    List<FinanceTransaction> items,
+    DateTime visibleMonth,
+  ) {
+    final daysInMonth = DateTime(
+      visibleMonth.year,
+      visibleMonth.month + 1,
+      0,
+    ).day;
 
-  List<double> _dailyTotals(List<FinanceTransaction> items, DateTime visibleMonth) {
-    final daysInMonth = DateTime(visibleMonth.year, visibleMonth.month + 1, 0).day;
     final daily = List<double>.filled(daysInMonth, 0.0);
 
     for (final t in items) {
       final dt = t.effectiveAt?.toLocal();
       if (dt == null) continue;
-      if (dt.year != visibleMonth.year || dt.month != visibleMonth.month) continue;
-
+      if (dt.year != visibleMonth.year || dt.month != visibleMonth.month) {
+        continue;
+      }
       daily[dt.day - 1] += t.amount;
     }
 
@@ -104,10 +109,98 @@ class _FinancePageState extends ConsumerState<FinancePage> {
     return maxV <= 0 ? 1 : maxV;
   }
 
+  Widget _sectionCard({
+    required Widget child,
+    EdgeInsets padding = const EdgeInsets.all(16),
+  }) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _headerCard(String monthText) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [_nude, Color(0xFFF7DCE7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: _white,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(Icons.attach_money, color: _pink, size: 30),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Financeiro',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: _ink,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  monthText,
+                  style: TextStyle(
+                    color: _ink.withValues(alpha: 0.68),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Mês anterior',
+            onPressed: _prevMonth,
+            icon: const Icon(Icons.chevron_left),
+          ),
+          IconButton(
+            tooltip: 'Próximo mês',
+            onPressed: _nextMonth,
+            icon: const Icon(Icons.chevron_right),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final range = _monthRange(_visibleMonth);
-
     final async = ref.watch(incomeRangeProvider(range));
     final money = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
 
@@ -117,55 +210,30 @@ class _FinancePageState extends ConsumerState<FinancePage> {
         backgroundColor: _nude,
         foregroundColor: _ink,
         elevation: 0,
+        centerTitle: true,
         title: const Text(
           'Financeiro',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 17,
+          ),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Mês anterior',
-            onPressed: _prevMonth,
-            icon: const Icon(Icons.chevron_left),
-          ),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                _monthTitle(_visibleMonth),
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: _ink.withValues(alpha: 0.85),
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Próximo mês',
-            onPressed: _nextMonth,
-            icon: const Icon(Icons.chevron_right),
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Erro: $e')),
         data: (items) {
-          // Resumo por método
           final totalPix = _sumByMethod(items, PaymentMethod.pix);
           final totalCash = _sumByMethod(items, PaymentMethod.dinheiro);
           final totalCard = _sumByMethod(items, PaymentMethod.cartao);
           final totalAll = items.fold<double>(0, (acc, t) => acc + t.amount);
 
-          // Ticket médio
           final count = items.length;
           final ticketMedio = count == 0 ? 0.0 : totalAll / count;
 
-          // Gráfico diário
           final daily = _dailyTotals(items, _visibleMonth);
           final maxDay = _maxValue(daily);
 
-          // Lista filtrada (UI)
           final filtered = (_methodFilter == null)
               ? items
               : items.where((t) => t.method == _methodFilter).toList();
@@ -183,17 +251,23 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 16),
+                    Icon(
+                      icon,
+                      size: 16,
+                      color: selected ? _pink : _ink.withValues(alpha: 0.8),
+                    ),
                     const SizedBox(width: 6),
                   ],
-                  Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  Text(
+                    label,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ],
               ),
-              selectedColor: _pink.withValues(alpha: 0.16),
-              backgroundColor: Colors.white,
+              selectedColor: _pink.withValues(alpha: 0.14),
+              backgroundColor: _white,
               side: BorderSide(
                 color: selected ? _pink : _rose.withValues(alpha: 0.75),
-                width: 1,
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -201,16 +275,76 @@ class _FinancePageState extends ConsumerState<FinancePage> {
             );
           }
 
-          Widget dashboard() {
-            return Card(
-              elevation: 0,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(22),
-                side: BorderSide(color: _rose.withValues(alpha: 0.55)),
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            children: [
+              _headerCard(_monthTitle(_visibleMonth)),
+              const SizedBox(height: 14),
+
+              _sectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: _rose,
+                          child: Icon(_methodIcon(_methodFilter), color: _pink),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Filtro: ${_methodLabel(_methodFilter)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: _ink.withValues(alpha: 0.85),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        chip(
+                          label: 'Todos',
+                          icon: Icons.all_inclusive,
+                          selected: _methodFilter == null,
+                          onTap: () => setState(() => _methodFilter = null),
+                        ),
+                        chip(
+                          label: 'Pix',
+                          icon: Icons.qr_code_2,
+                          selected: _methodFilter == PaymentMethod.pix,
+                          onTap: () =>
+                              setState(() => _methodFilter = PaymentMethod.pix),
+                        ),
+                        chip(
+                          label: 'Dinheiro',
+                          icon: Icons.payments_outlined,
+                          selected: _methodFilter == PaymentMethod.dinheiro,
+                          onTap: () => setState(
+                            () => _methodFilter = PaymentMethod.dinheiro,
+                          ),
+                        ),
+                        chip(
+                          label: 'Cartão',
+                          icon: Icons.credit_card,
+                          selected: _methodFilter == PaymentMethod.cartao,
+                          onTap: () => setState(
+                            () => _methodFilter = PaymentMethod.cartao,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
+              const SizedBox(height: 14),
+
+              _sectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -222,37 +356,59 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                         fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final small = constraints.maxWidth < 520;
 
-                    // KPIs
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _KpiCard(
-                            title: 'Faturamento',
-                            value: money.format(totalAll),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _KpiCard(
-                            title: 'Ticket médio',
-                            value: money.format(ticketMedio),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _KpiCard(
-                            title: 'Entradas',
-                            value: '$count',
-                          ),
-                        ),
-                      ],
+                        if (small) {
+                          return Column(
+                            children: [
+                              _KpiCard(
+                                title: 'Faturamento',
+                                value: money.format(totalAll),
+                              ),
+                              const SizedBox(height: 10),
+                              _KpiCard(
+                                title: 'Ticket médio',
+                                value: money.format(ticketMedio),
+                              ),
+                              const SizedBox(height: 10),
+                              _KpiCard(
+                                title: 'Entradas',
+                                value: '$count',
+                              ),
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _KpiCard(
+                                title: 'Faturamento',
+                                value: money.format(totalAll),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _KpiCard(
+                                title: 'Ticket médio',
+                                value: money.format(ticketMedio),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _KpiCard(
+                                title: 'Entradas',
+                                value: '$count',
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-
-                    const SizedBox(height: 14),
-
-                    // Gráfico
+                    const SizedBox(height: 16),
                     Text(
                       'Faturamento por dia',
                       style: TextStyle(
@@ -260,9 +416,9 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                         color: _ink.withValues(alpha: 0.75),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     SizedBox(
-                      height: 110,
+                      height: 120,
                       child: _BarsChart(
                         values: daily,
                         maxValue: maxDay,
@@ -273,122 +429,49 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                   ],
                 ),
               ),
-            );
-          }
-
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            children: [
-              // Filtros
-              Card(
-                elevation: 0,
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(22),
-                  side: BorderSide(color: _rose.withValues(alpha: 0.55)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: _rose,
-                            child: Icon(_methodIcon(_methodFilter), color: _pink),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Filtro: ${_methodLabel(_methodFilter)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                color: _ink.withValues(alpha: 0.85),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          chip(
-                            label: 'Todos',
-                            icon: Icons.all_inclusive,
-                            selected: _methodFilter == null,
-                            onTap: () => setState(() => _methodFilter = null),
-                          ),
-                          chip(
-                            label: 'Pix',
-                            icon: Icons.qr_code_2,
-                            selected: _methodFilter == PaymentMethod.pix,
-                            onTap: () => setState(() => _methodFilter = PaymentMethod.pix),
-                          ),
-                          chip(
-                            label: 'Dinheiro',
-                            icon: Icons.payments_outlined,
-                            selected: _methodFilter == PaymentMethod.dinheiro,
-                            onTap: () => setState(() => _methodFilter = PaymentMethod.dinheiro),
-                          ),
-                          chip(
-                            label: 'Cartão',
-                            icon: Icons.credit_card,
-                            selected: _methodFilter == PaymentMethod.cartao,
-                            onTap: () => setState(() => _methodFilter = PaymentMethod.cartao),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ✅ Dashboard
-              dashboard(),
-
-              const SizedBox(height: 12),
-
-              // Resumo do mês
-              Text(
-                'Resumo do mês',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: _ink.withValues(alpha: 0.85),
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Card(
-                elevation: 0,
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(22),
-                  side: BorderSide(color: _rose.withValues(alpha: 0.55)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    children: [
-                      _RowMoney(label: 'Total', value: money.format(totalAll), bold: true),
-                      const SizedBox(height: 8),
-                      Divider(color: _rose.withValues(alpha: 0.6)),
-                      const SizedBox(height: 8),
-                      _RowMoney(label: 'Pix', value: money.format(totalPix), icon: Icons.qr_code_2),
-                      _RowMoney(label: 'Dinheiro', value: money.format(totalCash), icon: Icons.payments_outlined),
-                      _RowMoney(label: 'Cartão', value: money.format(totalCard), icon: Icons.credit_card),
-                    ],
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 14),
 
-              // Entradas
+              _sectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Resumo do mês',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: _ink.withValues(alpha: 0.85),
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _RowMoney(
+                      label: 'Total',
+                      value: money.format(totalAll),
+                      bold: true,
+                    ),
+                    const SizedBox(height: 8),
+                    Divider(color: _rose.withValues(alpha: 0.6)),
+                    const SizedBox(height: 8),
+                    _RowMoney(
+                      label: 'Pix',
+                      value: money.format(totalPix),
+                      icon: Icons.qr_code_2,
+                    ),
+                    _RowMoney(
+                      label: 'Dinheiro',
+                      value: money.format(totalCash),
+                      icon: Icons.payments_outlined,
+                    ),
+                    _RowMoney(
+                      label: 'Cartão',
+                      value: money.format(totalCard),
+                      icon: Icons.credit_card,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
               Row(
                 children: [
                   Text(
@@ -401,69 +484,67 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: _rose.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
                       '${filtered.length}',
-                      style: const TextStyle(fontWeight: FontWeight.w900)),
+                      style: const TextStyle(fontWeight: FontWeight.w900),
                     ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
 
               if (filtered.isEmpty)
-                Card(
-                  elevation: 0,
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(22),
-                    side: BorderSide(color: _rose.withValues(alpha: 0.55)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: _rose,
-                          child: const Icon(Icons.inbox, color: _pink),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Nenhuma entrada neste filtro.',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: _ink.withValues(alpha: 0.75),
-                            ),
+                _sectionCard(
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: _rose,
+                        child: const Icon(Icons.inbox, color: _pink),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Nenhuma entrada neste filtro.',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: _ink.withValues(alpha: 0.75),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 )
               else
                 ...filtered.map((t) {
                   final dt = t.effectiveAt;
-                  final whenText = dt == null ? '-' : DateFormat('dd/MM/yyyy HH:mm').format(dt.toLocal());
+                  final whenText = dt == null
+                      ? '-'
+                      : DateFormat('dd/MM/yyyy HH:mm').format(dt.toLocal());
                   final methodText = _methodLabel(t.method);
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: Card(
-                      elevation: 0,
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        side: BorderSide(color: _rose.withValues(alpha: 0.55)),
+                    child: _sectionCard(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
                       ),
                       child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
                           backgroundColor: _rose,
-                          child: const Icon(Icons.arrow_downward, color: _pink),
+                          child: const Icon(
+                            Icons.arrow_downward,
+                            color: _pink,
+                          ),
                         ),
                         title: Text(
                           money.format(t.amount),
@@ -485,10 +566,6 @@ class _FinancePageState extends ConsumerState<FinancePage> {
     );
   }
 }
-
-// =========================
-// WIDGETS AUXILIARES
-// =========================
 
 class _RowMoney extends StatelessWidget {
   final String label;
@@ -545,7 +622,9 @@ class _KpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const ink = Color(0xFF1F1F1F);
+
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -567,7 +646,11 @@ class _KpiCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+            ),
           ),
         ],
       ),
@@ -590,29 +673,40 @@ class _BarsChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      final w = c.maxWidth;
-      final h = c.maxHeight;
+    return LayoutBuilder(
+      builder: (context, c) {
+        final h = c.maxHeight;
+        const barWidth = 8.0;
+        const spacing = 3.0;
+        final neededWidth = values.length * (barWidth + spacing);
 
-      final barW = (w / values.length).clamp(2.0, 14.0);
-
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (final v in values)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1.2),
-              child: Container(
-                width: barW,
-                height: (h * (v / maxValue)).clamp(1.0, h),
-                decoration: BoxDecoration(
-                  color: v <= 0 ? rose.withValues(alpha: 0.35) : pink.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: neededWidth < c.maxWidth ? c.maxWidth : neededWidth,
+            height: h,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final v in values)
+                  Padding(
+                    padding: const EdgeInsets.only(right: spacing),
+                    child: Container(
+                      width: barWidth,
+                      height: (h * (v / maxValue)).clamp(2.0, h),
+                      decoration: BoxDecoration(
+                        color: v <= 0
+                            ? rose.withValues(alpha: 0.28)
+                            : pink.withValues(alpha: 0.68),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-        ],
-      );
-    });
+          ),
+        );
+      },
+    );
   }
 }

@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'features/appointments/presentation/agenda_page.dart';
 import 'features/clients/presentation/clients_list_page.dart';
 import 'features/finance/presentation/finance_page.dart';
-import 'features/licensing/data/license_providers.dart';
 import 'features/licensing/presentation/license_activation_page.dart';
 import 'features/services/presentation/services_list_page.dart';
 import 'features/settings/presentation/about_company_page.dart';
@@ -13,22 +12,6 @@ import 'features/settings/presentation/about_company_page.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/agenda',
-    redirect: (context, state) async {
-      final license = await ref.read(licenseServiceProvider).getLicenseStatus();
-
-      final currentPath = state.uri.path;
-      final isGoingToActivation = currentPath == '/activate';
-
-      if (!license.isActive && !isGoingToActivation) {
-        return '/activate';
-      }
-
-      if (license.isActive && isGoingToActivation) {
-        return '/agenda';
-      }
-
-      return null;
-    },
     routes: [
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
@@ -36,37 +19,27 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/agenda',
             name: 'agenda',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: AgendaPage(),
-            ),
+            builder: (context, state) => const AgendaPage(),
           ),
           GoRoute(
             path: '/clients',
             name: 'clients',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: ClientsListPage(),
-            ),
+            builder: (context, state) => const ClientsListPage(),
           ),
           GoRoute(
             path: '/services',
             name: 'services',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: ServicesListPage(),
-            ),
+            builder: (context, state) => const ServicesListPage(),
           ),
           GoRoute(
             path: '/finance',
             name: 'finance',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: FinancePage(),
-            ),
+            builder: (context, state) => const FinancePage(),
           ),
           GoRoute(
             path: '/about-company',
             name: 'about-company',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: AboutCompanyPage(),
-            ),
+            builder: (context, state) => const AboutCompanyPage(),
           ),
         ],
       ),

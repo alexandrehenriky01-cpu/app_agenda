@@ -48,75 +48,102 @@ final clientAppointmentsProvider =
 });
 
 final clientHistoryGroupedProvider =
-    Provider.family<AsyncValue<List<ClientServiceHistoryGroup>>, String>(
-  (ref, clientId) {
-    final appointmentsAsync = ref.watch(clientAppointmentsProvider(clientId));
+    Provider.family<AsyncValue<List<ClientServiceHistoryGroup>>, String>((
+  ref,
+  clientId,
+) {
+  final appointmentsAsync = ref.watch(clientAppointmentsProvider(clientId));
 
-    return appointmentsAsync.whenData((appointments) {
-      final map = <String, List<ClientServiceHistoryItem>>{};
+  return appointmentsAsync.whenData((appointments) {
+    if (appointments.isEmpty) {
+      return const <ClientServiceHistoryGroup>[];
+    }
 
-      for (final appointment in appointments) {
-        if (appointment.status == AppointmentStatus.canceled) continue;
+    final groupedMap = <String, List<ClientServiceHistoryItem>>{};
 
-        for (final service in appointment.services) {
-          map.putIfAbsent(service.serviceId, () => []).add(
-                ClientServiceHistoryItem(
-                  appointment: appointment,
-                  service: service,
-                ),
-              );
-        }
+    for (final appointment in appointments) {
+      if (appointment.status == AppointmentStatus.canceled) continue;
+      if (appointment.services.isEmpty) continue;
+
+      for (final service in appointment.services) {
+        final serviceKey = service.serviceId.trim().isNotEmpty
+            ? service.serviceId
+            : service.nameSnapshot.trim();
+
+        groupedMap.putIfAbsent(serviceKey, () => []);
+
+        groupedMap[serviceKey]!.add(
+          ClientServiceHistoryItem(
+            appointment: appointment,
+            service: service,
+          ),
+        );
       }
+    }
 
-      final result = map.entries.map((entry) {
-        final items = entry.value;
+    if (groupedMap.isEmpty) {
+      return const <ClientServiceHistoryGroup>[];
+    }
 
-        items.sort(
+    final result = groupedMap.entries.map((entry) {
+      final items = [...entry.value]
+        ..sort(
           (a, b) => b.appointment.startAt.compareTo(a.appointment.startAt),
         );
 
-        final first = items.first;
+      final first = items.first;
 
-        final doneCount = items
-            .where((item) => item.appointment.status == AppointmentStatus.done)
-            .length;
+      final doneCount = items
+          .where((item) => item.appointment.status == AppointmentStatus.done)
+          .length;
 
-        final confirmedCount = items
-            .where((item) => item.appointment.status == AppointmentStatus.confirmed)
-            .length;
+      final confirmedCount = items
+          .where(
+            (item) => item.appointment.status == AppointmentStatus.confirmed,
+          )
+          .length;
 
-        final pendingCount = items
-            .where((item) => item.appointment.status == AppointmentStatus.pending)
-            .length;
+      final pendingCount = items
+          .where((item) => item.appointment.status == AppointmentStatus.pending)
+          .length;
 
-        final totalValue = items.fold<double>(
-          0,
-          (sum, item) => sum + item.service.price,
-        );
+      final totalValue = items.fold<double>(
+        0,
+        (sum, item) => sum + item.service.price,
+      );
 
-        final totalPaid = items.fold<double>(0, (sum, item) {
-          return item.appointment.status == AppointmentStatus.done
-              ? sum + item.service.price
-              : sum;
-        });
+      final totalPaid = items.fold<double>(0, (sum, item) {
+        return item.appointment.status == AppointmentStatus.done
+            ? sum + item.service.price
+            : sum;
+      });
 
-        return ClientServiceHistoryGroup(
-          serviceId: first.service.serviceId,
-          serviceName: first.service.nameSnapshot,
-          count: items.length,
-          doneCount: doneCount,
-          confirmedCount: confirmedCount,
-          pendingCount: pendingCount,
-          totalValue: totalValue,
-          totalPaid: totalPaid,
-          lastDate: items.isEmpty ? null : items.first.appointment.startAt,
-          lastPaymentMethodLabel: items.first.appointment.paymentMethod?.label,
-          items: items,
-        );
-      }).toList();
+      return ClientServiceHistoryGroup(
+        serviceId: first.service.serviceId,
+        serviceName: first.service.nameSnapshot,
+        count: items.length,
+        doneCount: doneCount,
+        confirmedCount: confirmedCount,
+        pendingCount: pendingCount,
+        totalValue: totalValue,
+        totalPaid: totalPaid,
+        lastDate: first.appointment.startAt,
+        lastPaymentMethodLabel: first.appointment.paymentMethod?.label,
+        items: items,
+      );
+    }).toList();
 
-      result.sort((a, b) => a.serviceName.compareTo(b.serviceName));
-      return result;
+    result.sort((a, b) {
+      final aDate = a.lastDate;
+      final bDate = b.lastDate;
+
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+
+      return bDate.compareTo(aDate);
     });
-  },
-);
+
+    return result;
+  });
+});

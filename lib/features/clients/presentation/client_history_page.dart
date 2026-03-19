@@ -18,6 +18,7 @@ class ClientHistoryPage extends ConsumerWidget {
   static const _rose = Color(0xFFF8BBD0);
   static const _nude = Color(0xFFFFF3F6);
   static const _ink = Color(0xFF1F1F1F);
+  static const _white = Colors.white;
 
   String _money(double value) {
     return NumberFormat.currency(
@@ -62,9 +63,9 @@ class ClientHistoryPage extends ConsumerWidget {
     required String label,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: _rose),
       ),
@@ -92,8 +93,17 @@ class ClientHistoryPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: _nude,
       appBar: AppBar(
-        title: const Text('Histórico do Cliente'),
+        backgroundColor: _nude,
+        foregroundColor: _ink,
+        elevation: 0,
         centerTitle: true,
+        title: const Text(
+          'Histórico do Cliente',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 17,
+          ),
+        ),
       ),
       body: groupedAsync.when(
         loading: () => const Center(
@@ -118,12 +128,12 @@ class ClientHistoryPage extends ConsumerWidget {
           final totalServicos = groups.length;
 
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
             children: [
               Container(
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [_nude, _rose],
+                    colors: [_nude, Color(0xFFF7DCE7)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -181,24 +191,33 @@ class ClientHistoryPage extends ConsumerWidget {
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
-
               ...groups.map((group) {
-                return Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    side: BorderSide(
-                      color: _rose.withValues(alpha: 0.7),
-                    ),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: _white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 14,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
                   child: ExpansionTile(
                     tilePadding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 4,
+                      vertical: 6,
                     ),
                     childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    collapsedShape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     title: Text(
                       group.serviceName,
                       style: const TextStyle(
@@ -224,10 +243,10 @@ class ClientHistoryPage extends ConsumerWidget {
 
                       return Container(
                         margin: const EdgeInsets.only(top: 10),
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
+                          color: _white,
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: statusColor.withValues(alpha: 0.25),
                           ),

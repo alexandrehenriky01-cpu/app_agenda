@@ -18,6 +18,12 @@ class ClientsListPage extends ConsumerStatefulWidget {
 class _ClientsListPageState extends ConsumerState<ClientsListPage> {
   String _query = '';
 
+  static const _pink = Color(0xFFE91E63);
+  static const _rose = Color(0xFFF8BBD0);
+  static const _nude = Color(0xFFFFF3F6);
+  static const _ink = Color(0xFF1F1F1F);
+  static const _white = Colors.white;
+
   Future<void> _deleteClient(
     BuildContext context,
     WidgetRef ref,
@@ -30,24 +36,22 @@ class _ClientsListPageState extends ConsumerState<ClientsListPage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Excluir cliente?'),
-        content: Text(
-          'Tem certeza que deseja excluir "${client.name}"?',
-        ),
+        content: Text('Tem certeza que deseja excluir "${client.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancelar'),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Excluir'),
           ),
         ],
       ),
     );
 
-    if (!mounted) return;
-    if (ok != true) return;
+    if (!mounted || ok != true) return;
 
     try {
       await repo.delete(client.id);
@@ -63,9 +67,7 @@ class _ClientsListPageState extends ConsumerState<ClientsListPage> {
       if (!mounted) return;
 
       messenger.showSnackBar(
-        SnackBar(
-          content: Text('Erro ao excluir: $e'),
-        ),
+        SnackBar(content: Text('Erro ao excluir: $e')),
       );
     }
   }
@@ -100,26 +102,123 @@ class _ClientsListPageState extends ConsumerState<ClientsListPage> {
     );
   }
 
+  Widget _searchField() {
+    return TextField(
+      decoration: InputDecoration(
+        hintText: 'Buscar por nome ou telefone',
+        prefixIcon: const Icon(Icons.search),
+        filled: true,
+        fillColor: _white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: _rose.withValues(alpha: 0.65)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: _rose.withValues(alpha: 0.65)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: _pink, width: 1.6),
+        ),
+      ),
+      onChanged: (v) {
+        setState(() => _query = v.trim().toLowerCase());
+      },
+    );
+  }
+
+  Widget _clientCard(BuildContext context, Client c) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 8,
+        ),
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: _rose.withValues(alpha: 0.60),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Icon(Icons.person, color: _pink),
+        ),
+        title: Text(
+          c.name,
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: _ink,
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            c.phoneE164,
+            style: TextStyle(
+              color: _ink.withValues(alpha: 0.68),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        onTap: () => _openForm(context, c),
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) async {
+            switch (value) {
+              case 'history':
+                await _openHistory(context, c);
+                break;
+              case 'delete':
+                await _deleteClient(context, ref, c);
+                break;
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem<String>(
+              value: 'history',
+              child: Text('Histórico'),
+            ),
+            PopupMenuItem<String>(
+              value: 'delete',
+              child: Text('Excluir'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final clientsAsync = ref.watch(clientsStreamProvider);
 
     return Scaffold(
+      backgroundColor: _nude,
       appBar: AppBar(
-        title: const Text('Clientes'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(64),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Buscar por nome ou telefone…',
-                prefixIcon: Icon(Icons.search),
-              ),
-              onChanged: (v) {
-                setState(() => _query = v.trim().toLowerCase());
-              },
-            ),
+        backgroundColor: _nude,
+        foregroundColor: _ink,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text(
+          'Clientes',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 17,
           ),
         ),
       ),
@@ -137,58 +236,108 @@ class _ClientsListPageState extends ConsumerState<ClientsListPage> {
             if (_query.isEmpty) return true;
 
             final nameMatch = c.name.toLowerCase().contains(_query);
-
             final phoneDigits = c.phoneE164.replaceAll(RegExp(r'\D'), '');
-
-            final phoneMatch = qDigits.isEmpty ? false : phoneDigits.contains(qDigits);
+            final phoneMatch =
+                qDigits.isEmpty ? false : phoneDigits.contains(qDigits);
 
             return nameMatch || phoneMatch;
           }).toList();
 
-          if (filtered.isEmpty) {
-            return const Center(
-              child: Text('Nenhum cliente encontrado.'),
-            );
-          }
-
-          return ListView.separated(
-            itemCount: filtered.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, i) {
-              final c = filtered[i];
-
-              return ListTile(
-                title: Text(c.name),
-                subtitle: Text(c.phoneE164),
-                onTap: () => _openForm(context, c),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (value) async {
-                    switch (value) {
-                      case 'history':
-                        await _openHistory(context, c);
-                        break;
-                      case 'delete':
-                        await _deleteClient(context, ref, c);
-                        break;
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem<String>(
-                      value: 'history',
-                      child: Text('Histórico'),
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [_nude, Color(0xFFF7DCE7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    PopupMenuItem<String>(
-                      value: 'delete',
-                      child: Text('Excluir'),
-                    ),
-                  ],
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 18,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 58,
+                            height: 58,
+                            decoration: BoxDecoration(
+                              color: _white,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: const Icon(
+                              Icons.people,
+                              color: _pink,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Cadastro de clientes',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: _ink,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${filtered.length} cliente(s) encontrado(s)',
+                                  style: TextStyle(
+                                    color: _ink.withValues(alpha: 0.68),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      _searchField(),
+                    ],
+                  ),
                 ),
-              );
-            },
+                const SizedBox(height: 14),
+                if (filtered.isEmpty)
+                  const Expanded(
+                    child: Center(
+                      child: Text('Nenhum cliente encontrado.'),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, i) {
+                        final c = filtered[i];
+                        return _clientCard(context, c);
+                      },
+                    ),
+                  ),
+              ],
+            ),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: _pink,
+        foregroundColor: _white,
         onPressed: () async {
           final messenger = ScaffoldMessenger.of(context);
 
@@ -218,7 +367,11 @@ class _ClientsListPageState extends ConsumerState<ClientsListPage> {
             );
           }
         },
-        child: const Icon(Icons.person_add),
+        icon: const Icon(Icons.person_add_alt_1),
+        label: const Text(
+          'Novo cliente',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
       ),
     );
   }
